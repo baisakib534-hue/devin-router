@@ -9,7 +9,9 @@ Step-by-step progress with evidence. One step at a time, in order.
 - Devin copy size: ~1.29 GB.
 
 ## Steps
+- [x] 1-4 done: inventory, pristine+mod copies, repo scaffold+push, skills check (docs/skills-check.md).
 - [x] 1. Inventory this PC for the task.
 - [x] 2. Create devin-pristine/ (byte copy; launch once to prove it opens) and devin-mod/ (git init; commit "pristine").
-- [ ] 3. Clone repo into repo/, create layout, commit + push "scaffold".
-- [ ] 4. Skills check for Phase 1.
+- [x] 3. Clone repo into repo/, create layout, commit + push "scaffold".
+- [x] 4. Skills check for Phase 1.
+
