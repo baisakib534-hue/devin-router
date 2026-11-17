@@ -1,0 +1,14 @@
+# Ignore secrets and build artifacts
+node_modules/
+.next/
+dist/
+build/
+*.exe
+*.msi
+*.log
+.env
+.env.local
+*.pem
+*.key
+config.local.json
+gateway/data/
