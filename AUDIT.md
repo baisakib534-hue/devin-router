@@ -9,9 +9,13 @@ Step-by-step progress with evidence. One step at a time, in order.
 - Devin copy size: ~1.29 GB.
 
 ## Steps
+- [x] 5. Test project created (devin/test-project).
+- [~] 6. Computer-use exploration: no computer-use tool in this session; will use file REA (Step 7) instead. Logged in DECISIONS.md.
+- [~] 7. File REA in progress (docs/rea.md stub).
 - [x] 1-4 done: inventory, pristine+mod copies, repo scaffold+push, skills check (docs/skills-check.md).
 - [x] 1. Inventory this PC for the task.
 - [x] 2. Create devin-pristine/ (byte copy; launch once to prove it opens) and devin-mod/ (git init; commit "pristine").
 - [x] 3. Clone repo into repo/, create layout, commit + push "scaffold".
 - [x] 4. Skills check for Phase 1.
+
 
