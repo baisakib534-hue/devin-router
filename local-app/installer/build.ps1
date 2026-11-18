@@ -3,7 +3,8 @@ $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $stage = Join-Path $PSScriptRoot "assets"
 if (Test-Path $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Force $stage | Out-Null
-$exeSrc = Join-Path $root "local-app\bin\devin-router-local-v6.exe"
+$exeSrc = Join-Path $root "local-app\bin\devin-router-local-v7-gui.exe"
+if (-not (Test-Path $exeSrc)) { $exeSrc = Join-Path $root "local-app\bin\devin-router-local-v7.exe" }
 if (-not (Test-Path $exeSrc)) { $exeSrc = Join-Path $root "local-app\bin\devin-router-local.exe" }
 Copy-Item $exeSrc (Join-Path $stage "devin-router-local.exe") -Force
 $gw = Join-Path $stage "gateway"

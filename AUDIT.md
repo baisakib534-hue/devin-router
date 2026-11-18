@@ -121,3 +121,26 @@ Step-by-step progress with evidence. One step at a time, in order.
 - `--user-data-dir` / `devUserDataDir` added so installed-target tests use the throwaway user-data.
 - Final proof: Apply output `settingsFile` = `test-project\fresh-e2e\user-data\User\settings.json`, `credentialsFile` = `test-project\fresh-e2e\user-data\credentials.toml`.
 - Owner `%APPDATA%\Devin` untouched: `User\settings.json` absent before and after; `credentials.toml` unmodified.
+
+## Phase 4 - Tray + weight gate: PASS (2026-11-19)
+- Skills used: Golang Backend Development (standard-library-first, runtime budget), architecture (minimal lifecycle change).
+- Tray: `github.com/getlantern/systray` embedded icon; menu = Open / Background Run / Quit.
+- Binary: `devin-router-local-v7-gui.exe` = 8,031,744 bytes.
+- Installer: `DevinRouterSetup.exe` = 16,366,592 bytes (<25 MB).
+- Idle process tree (Go app + Node gateway), 2 minutes / 13 samples: 42.08–50.09 MB RAM, 0.00% CPU.
+- Background Run API: ON starts the gateway, OFF closes it; Quit stops both.
+
+## Phase 5 - Parity + offline: PASS with one honest limitation (2026-11-19)
+- Skills used: architecture (scope), Golang Backend Development (runtime validation).
+- `git diff` in `devin-mod`: only the two documented wiring files changed.
+- Runtime parity: gateway serves the same Connect-RPC routes Devin normally calls.
+- Offline E2E: user-level proxy block (`127.0.0.1:9`, localhost bypass) still completed `hello-offline.txt` through gateway + mock.
+- Exact hosts-file block: attempted; Windows UAC was denied, so this specific proof remains pending owner elevation.
+
+## Phase 3 - Uppcoder/PostgreSQL compatibility: PASS locally (2026-11-19)
+- Skills used: architecture, frontend/API inspection from the existing website.
+- Added `pg`; `DATABASE_URL` selects PostgreSQL, otherwise local SQLite is used.
+- Converted all direct `better-sqlite3` calls to the async adapter.
+- Production build: `next build` passes (25 routes).
+- Runtime test on fresh SQLite: `/`, `/signup`, `/login` HTTP 200; signup + login API pass.
+- Uppcoder deployment itself still requires portal credentials and is not claimed as completed.

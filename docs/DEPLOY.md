@@ -2,18 +2,23 @@
 
 ## 1. Create the project
 
-- Repo: `https://github.com/baisakib534-hue/devin-router`
-- Branch: `main`
-- Root directory: `website`
+- Sign in at `https://portal.uppcoder.com`.
+- Go to **Stacks → Create → Blank stack**.
+- Choose **Next.js** as the main app.
+- Add **PostgreSQL**; Uppcoder wires `DATABASE_URL` automatically.
+- On the Next.js card, choose **Connect repository** and enter:
+  - Repo: `https://github.com/baisakib534-hue/devin-router`
+  - Branch: `main`
+  - Root directory: `website`
 
 ## 2. Build settings
 
 | Setting | Value |
 |---|---|
 | Framework | Next.js |
-| Build command | `npm run build` |
-| Output directory | `.next` |
 | Install command | `npm install` |
+| Build command | `npm run build` |
+| Start command | `npm start` |
 | Node version | 20+ |
 
 ## 3. Environment variables
@@ -23,6 +28,8 @@
 | `DATABASE_URL` | Your Postgres connection string |
 | `SESSION_SECRET` | Long random string (32+ chars) |
 
+The website includes the `pg` driver and automatically uses PostgreSQL when `DATABASE_URL` is present. Without `DATABASE_URL`, local development falls back to SQLite.
+
 Generate a secret locally:
 
 ```powershell
@@ -31,7 +38,7 @@ Generate a secret locally:
 
 ## 4. Port
 
-Uppcoder injects `PORT`; the Next.js server binds it automatically. Do not hardcode a port.
+Uppcoder injects `PORT`; `npm start` runs `next start` without a hardcoded port.
 
 ## 5. After deploy
 

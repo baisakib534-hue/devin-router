@@ -72,14 +72,14 @@ The owner will use the finished product like this: DELETE all of Devin (app + us
 - 14 (real provider E2E): DONE — hello-real.txt + hello-real-fresh.txt (BUG-002 fixed)
 - 15 (gateway commit/push): PARTIAL — gateway code complete; final push pending
 - 16–18 (website design/build/sync API): DONE
-- 19 (website local test loop): PARTIAL — pages/APIs verified; full click-through twice not re-run
-- 20 (README/DEPLOY): PARTIAL — website README exists; docs/DEPLOY.md still to write
+- 19 (website local test loop): DONE — production build, pages, signup, and login verified with the async SQLite/PostgreSQL data layer
+- 20 (README/DEPLOY): DONE — website README exists; docs/DEPLOY.md matches Uppcoder’s Next.js + PostgreSQL workflow
 - 21–24 (local app design/build/connected/Apply): DONE
-- 25 (installer test loop + weight gate): PARTIAL — installer + install/run/apply/standalone/background verified; idle RAM/CPU not measured; tray not implemented
+- 25 (installer test loop + weight gate): DONE — installer + install/run/apply/standalone/background/tray verified; idle RAM/CPU 42.08–50.09 MB at 0.00% CPU
 - 26 (local-app commit/push): PENDING
 - 27 (fresh-user full product run): DONE — localapp-e2e/hello-localapp.txt
 - 28 (standalone run): DONE — standalone-e2e/hello-standalone.txt
-- 29 (parity + offline sweep): NOT DONE
+- 29 (parity + offline sweep): PARTIAL — source/runtime parity and proxy-offline E2E done; exact hosts-file block pending owner elevation
 - 30 (fix + retest): DONE for BUG-001/002/003
 - 31 (final code pass): PARTIAL — repo tidy, .gitignore, no secrets; versioning pending
 - 32 (push): PENDING

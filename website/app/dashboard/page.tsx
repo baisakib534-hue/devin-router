@@ -1,17 +1,21 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import db from "@/lib/db";
+import { get } from "@/lib/db";
 import Nav from "@/components/Nav";
 
 export default async function Dashboard() {
   const user = await requireUser();
   if (!user) redirect("/login");
-  const providerCount = (db.prepare("SELECT COUNT(*) n FROM providers WHERE user_id=?").get(user.id) as any).n;
-  const modelCount = (db.prepare("SELECT COUNT(*) n FROM models WHERE user_id=?").get(user.id) as any).n;
-  const deviceCount = (db.prepare("SELECT COUNT(*) n FROM devices WHERE user_id=?").get(user.id) as any).n;
-  const settings = db.prepare("SELECT * FROM user_settings WHERE user_id=?").get(user.id) as any;
-  const provider = settings?.selected_provider_id ? db.prepare("SELECT name FROM providers WHERE id=?").get(settings.selected_provider_id) as any : null;
-  const model = settings?.selected_model_id ? db.prepare("SELECT display_name FROM models WHERE id=?").get(settings.selected_model_id) as any : null;
+  const providerCount = Number((await get("SELECT COUNT(*) n FROM providers WHERE user_id=?", [user.id]))?.n ?? 0);
+  const modelCount = Number((await get("SELECT COUNT(*) n FROM models WHERE user_id=?", [user.id]))?.n ?? 0);
+  const deviceCount = Number((await get("SELECT COUNT(*) n FROM devices WHERE user_id=?", [user.id]))?.n ?? 0);
+  const settings = await get("SELECT * FROM user_settings WHERE user_id=?", [user.id]);
+  const provider = settings?.selected_provider_id
+    ? await get("SELECT name FROM providers WHERE id=?", [settings.selected_provider_id])
+    : null;
+  const model = settings?.selected_model_id
+    ? await get("SELECT display_name FROM models WHERE id=?", [settings.selected_model_id])
+    : null;
 
   return (
     <main style={{ maxWidth: 1000, margin: "40px auto", padding: 24 }}>

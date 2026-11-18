@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/db";
+import { get, run } from "@/lib/db";
 import { hashPassword, verifyPassword, createSession, generateConnectorCredentials, generateId } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
     
     // Check if user exists
-    const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    const existing = await get("SELECT id FROM users WHERE email = ?", [email]);
     if (existing) {
       return NextResponse.json({ error: "Email already registered" }, { status: 400 });
     }
@@ -21,10 +21,10 @@ export async function POST(req: NextRequest) {
     const creds = generateConnectorCredentials();
     const connectorHash = await hashPassword(creds.password);
     
-    db.prepare(`
+    await run(`
       INSERT INTO users (id, email, password_hash, connector_username, connector_password_hash)
       VALUES (?, ?, ?, ?, ?)
-    `).run(userId, email, passwordHash, creds.username, connectorHash);
+    `, [userId, email, passwordHash, creds.username, connectorHash]);
     
     const token = await createSession({ userId, email });
     

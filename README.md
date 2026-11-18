@@ -5,7 +5,7 @@ A system that lets the real **Devin Desktop** run on the owner's own AI provider
 ## Three parts, one product
 
 - **Website** (`website/`) — the owner's home for accounts, providers, models, connector credentials, devices, and request logs. Next.js, deploys to Uppcoder.
-- **Local software** (`local-app/`) — a small, light Windows desktop app + installer. Login with connector credentials → pull providers/models → select a model → **Apply** points Devin at the local gateway. Also has a **Standalone** mode (runs the gateway itself, tray-resident, syncs up when the website returns).
+- **Local software** (`local-app/`) — a small, light Windows desktop app + installer. Login with connector credentials → pull providers/models → select a model → **Apply** points Devin at the local gateway. Also has a **Standalone** mode (runs the gateway itself, tray-resident, syncs up when the website returns). The tray exposes Open, Background Run, and Quit.
 - **Gateway** (`gateway/`) — the engine inside the local software. Sits between Devin and the provider: answers Devin's auth as "logged in" locally, translates model requests to the selected provider's API (incl. streaming + tool calls). Cognition's servers receive nothing.
 
 ## Status

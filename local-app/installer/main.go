@@ -47,7 +47,7 @@ func main() {
 	}
 
 	exe := filepath.Join(dest, "devin-router-local.exe")
-	ps := fmt.Sprintf(`$s=(New-Object -ComObject WScript.Shell).CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Devin Router.lnk");$s.TargetPath=%q;$s.WorkingDirectory=%q;$s.Save()`, exe, dest)
+	ps := fmt.Sprintf(`$s=(New-Object -ComObject WScript.Shell).CreateShortcut("$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Devin Router.lnk");$s.TargetPath=%q;$s.Arguments="--open";$s.WorkingDirectory=%q;$s.Save()`, exe, dest)
 	_ = exec.Command("powershell", "-NoProfile", "-Command", ps).Run()
 
 	runValue := fmt.Sprintf("%q --background", exe)

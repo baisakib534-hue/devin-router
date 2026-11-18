@@ -49,6 +49,8 @@ Evidence (full REA in `docs/rea.md`):
 - Local app `/api/apply` on port 20140 returned `ok:true` with the checklist (gateway, website route, backup, Devin Max plan, restart note).
 - File: `test-project/localapp-e2e/hello-localapp.txt` = `HELLO FROM DEVIN ROUTER LOCAL APP`
 - Website sync API verified with the connector credentials: `/api/sync/hello` 200, `/api/sync/config` 200; unauthenticated `/api/sync/config` correctly returns 401.
+- Website production build passes (`next build`, 25 routes).
+- The data layer now supports both local SQLite and production PostgreSQL through `DATABASE_URL`; signup and login were runtime-tested on a fresh SQLite database.
 
 ## 4. Fresh-install E2E (owner final-use add-on, mandatory)
 
@@ -97,19 +99,22 @@ Installed-target isolation (after BUG-003):
 
 ## 8. Local app + installer (weight gate)
 
-- Local app: single Go binary, **10.94 MB**, no Electron.
-- Installer: `repo/local-app/bin/DevinRouterSetup.exe` = **19,275,776 bytes (18.4 MB)** — under the 25 MB gate.
+- Local app: single Go GUI binary, **8,031,744 bytes (7.7 MB)**, no Electron.
+- Installer: `repo/local-app/bin/DevinRouterSetup.exe` = **16,366,592 bytes (15.6 MB)** — under the 25 MB gate.
 - Bundled gateway: 5.4 MB (pruned `better-sqlite3` to `package.json` + `lib` + prebuilt `.node`).
 - Installer lays down `%LOCALAPPDATA%\DevinRouter` (app + gateway), Start Menu shortcut, Start-with-Windows Run key, and warns if Node.js is missing.
 - Installed-copy E2E: `test-project/installed-app-e2e/hello-installed.txt` = `HELLO FROM DEVIN ROUTER INSTALLED APP` (bundled gateway).
-- **Not yet measured:** idle RAM/CPU over 2 minutes with the UI closed. Installer size passes; the RAM/CPU measurement is still pending.
-- **Not implemented:** tray icon (Open / Background Run / Quit). Background Run and Start-with-Windows work without a tray.
+- Tray icon implemented: **Open / Background Run / Quit**.
+- Idle RAM/CPU, 2 minutes, 13 samples, Background Run ON and UI closed: **42.08–50.09 MB total**, **0.00% CPU** — passes the ≤60 MB / ~0% gate.
+- Background Run verified: ON starts the gateway, OFF stops it; tray Quit stops both cleanly.
 
 ## 9. Parity / offline sweep
 
-Honest status: **not completed.**
-- The full EXPLORATION-LOG route parity pass and the hosts-block offline test were not re-run after the latest changes.
-- Strong indirect evidence exists (all E2E runs complete with no Cognition traffic in `gateway.log`), but this is not a substitute for the required sweep.
+Honest status: **source parity and offline E2E completed; the exact hosts-file block was not.**
+- Source diff in `devin-mod`: only the two documented wiring files changed (`windsurf-auth/dist/extension.js`, `windsurf/dist/extension.js`).
+- Runtime parity: the gateway answers the same Connect-RPC routes Devin uses (`GetUserStatus`, `GetCliModelConfigs`, `GetCliTeamSettings`, `GetChatMessage`, analytics).
+- Offline proof: a user-level proxy block (`127.0.0.1:9`, `NO_PROXY=127.0.0.1,localhost`) kept external traffic unusable while Devin still created `test-project/offline-e2e/hello-offline.txt` through the local gateway and mock provider.
+- The exact hosts-file block was attempted but Windows UAC was denied; it remains an owner-elevation step, not a completed hosts-block proof.
 
 ## 10. Bugs
 
@@ -131,17 +136,16 @@ Screenshots exist in `repo/test-project/` (`account-proof-*.png`, `persist-*.png
 
 ## 12. Known gaps (not claimed as done)
 
-- Parity + offline hosts-block sweep: not run.
-- Website not deployed to Uppcoder (recipe in `docs/DEPLOY.md` still to be written).
-- Tray icon not implemented.
-- Idle RAM/CPU weight measurement not taken.
+- Exact hosts-file offline block: not run (user-level proxy proof completed instead).
+- Website not deployed to Uppcoder (recipe in `docs/DEPLOY.md` exists; portal credentials are not available in this session).
+- GitHub Release v1.0.0 not yet created.
 - GitHub Release v1.0.0 not yet created.
 
 ## 13. What the owner does next
 
 1. Deploy the website (see `docs/DEPLOY.md`; for now run locally with `cd website && npm run dev`).
 2. Create an account, add a provider, fetch/add models, open **Connect** and copy the connector username/password.
-3. Run `DevinRouterSetup.exe` (18.4 MB) — it installs to `%LOCALAPPDATA%\DevinRouter`.
+3. Run `DevinRouterSetup.exe` (15.6 MB) — it installs to `%LOCALAPPDATA%\DevinRouter`.
 4. Start **Devin Router** from the Start Menu.
 5. Log in with the connector credentials (or switch to **standalone** and add the provider/API key/model directly).
 6. Select the model, choose **Devin (installed)**, click **APPLY**.

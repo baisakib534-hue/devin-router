@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import db from "@/lib/db";
+import { all } from "@/lib/db";
 import Nav from "@/components/Nav";
 
 export default async function LogsPage() {
   const user = await requireUser();
   if (!user) redirect("/login");
-  const logs = db.prepare("SELECT * FROM request_logs WHERE user_id=? ORDER BY created_at DESC LIMIT 200").all(user.id) as any[];
+  const logs = await all("SELECT * FROM request_logs WHERE user_id=? ORDER BY created_at DESC LIMIT 200", [user.id]);
   return (
     <main style={{ maxWidth: 1000, margin: "40px auto", padding: 24 }}>
       <h1>Logs</h1>

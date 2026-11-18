@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -11,11 +13,17 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/getlantern/systray"
 )
+
+//go:embed icon.ico
+var iconBytes []byte
 
 type Provider struct {
 	ID       string `json:"id"`
@@ -85,6 +93,9 @@ var (
 )
 
 func defaultConfigPath() string {
+	if path := os.Getenv("DEVIN_ROUTER_CONFIG"); path != "" {
+		return path
+	}
 	base := os.Getenv("LOCALAPPDATA")
 	if base == "" {
 		base, _ = os.UserConfigDir()
@@ -489,6 +500,22 @@ func statePayload() map[string]any {
 	}
 }
 
+func openUI(addr string) {
+	_ = exec.Command("cmd", "/c", "start", "", "http://"+addr).Start()
+}
+
+func toggleBackgroundRun(on bool) {
+	appConfig.BackgroundRun = on
+	saveConfig(appConfig)
+	if on {
+		if err := startGateway(); err != nil {
+			fmt.Fprintln(os.Stderr, "gateway:", err)
+		}
+	} else {
+		_ = stopGateway()
+	}
+}
+
 func main() {
 	port := flag.Int("port", 20140, "local UI port")
 	host := flag.String("host", "127.0.0.1", "local UI host")
@@ -496,6 +523,8 @@ func main() {
 	background := flag.Bool("background", false, "run only the gateway in the background")
 	gatewayPort := flag.Int("gateway-port", 0, "override the gateway port")
 	flag.Parse()
+	debug.SetGCPercent(20)
+	debug.SetMemoryLimit(32 << 20)
 	configPath = defaultConfigPath()
 	appConfig = loadConfig()
 	appConfig.UIHost = *host
@@ -503,14 +532,8 @@ func main() {
 	if *gatewayPort > 0 {
 		appConfig.GatewayPort = *gatewayPort
 	}
-
 	if *background {
-		if err := startGateway(); err != nil {
-			fmt.Fprintln(os.Stderr, "gateway:", err)
-			os.Exit(1)
-		}
-		fmt.Printf("Devin Router gateway running at %s\n", gatewayBase())
-		select {}
+		appConfig.BackgroundRun = true
 	}
 
 	saveConfig(appConfig)
@@ -777,12 +800,52 @@ func main() {
 	addr := fmt.Sprintf("%s:%d", appConfig.UIHost, appConfig.UIPort)
 	fmt.Printf("Devin Router local app: http://%s (mode=%s)\n", addr, appConfig.Mode)
 	if *open {
-		_ = exec.Command("cmd", "/c", "start", "", "http://"+addr).Start()
+		openUI(addr)
 	}
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+
+	server := &http.Server{Addr: addr}
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Fprintln(os.Stderr, err)
+			systray.Quit()
+		}
+	}()
+
+	systray.Run(func() {
+		systray.SetIcon(iconBytes)
+		systray.SetTitle("Devin Router")
+		systray.SetTooltip("Devin Router")
+		openItem := systray.AddMenuItem("Open", "Open Devin Router")
+		backgroundItem := systray.AddMenuItem("Background Run", "Toggle gateway background run")
+		quitItem := systray.AddMenuItem("Quit", "Quit Devin Router")
+		if appConfig.BackgroundRun {
+			backgroundItem.Check()
+		}
+		go func() {
+			for {
+				select {
+				case <-openItem.ClickedCh:
+					openUI(addr)
+				case <-backgroundItem.ClickedCh:
+					on := !appConfig.BackgroundRun
+					toggleBackgroundRun(on)
+					if on {
+						backgroundItem.Check()
+						systray.SetTooltip("Devin Router — gateway running")
+					} else {
+						backgroundItem.Uncheck()
+						systray.SetTooltip("Devin Router — gateway stopped")
+					}
+				case <-quitItem.ClickedCh:
+					systray.Quit()
+					return
+				}
+			}
+		}()
+	}, func() {
+		_ = stopGateway()
+		_ = server.Shutdown(context.Background())
+	})
 }
 
 const uiHTML = `<!doctype html>
