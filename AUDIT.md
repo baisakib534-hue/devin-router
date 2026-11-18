@@ -37,3 +37,10 @@ Step-by-step progress with evidence. One step at a time, in order.
   - Auth gate passed (fake session accepted)
   - ACP registry fallback to default (devin-cli registered)
   - Need: implement Connect-RPC protobuf responses (currently JSON causes content-type error)
+
+## Phase 2 - Step 13 mock E2E: PROGRESS
+- [x] LS starts clean, no auth errors (content-type fix: gateway responds `application/proto` for proto requests)
+- [x] Auth gate bypassed: "Auth state updated to logged-in" in ACP log
+- [x] Window shows workspace ("test-project - Devin"), NO login screen
+- [x] All traffic to localhost gateway (Ping 200, RecordAnalyticsEvent 200, GetUserStatus 200)
+- [ ] Need: agent creates hello.txt (requires UI interaction or CLI)

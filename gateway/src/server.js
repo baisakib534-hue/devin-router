@@ -171,6 +171,11 @@ const connectHandlers = {
   }),
   "exa.api_server_pb.ApiServerService/Ping": () => ({}),
   "exa.product_analytics_pb.ProductAnalyticsService/RecordAnalyticsEvent": () => ({}),
+  "exa.seat_management_pb.SeatManagementService/MigrateApiKey": () => ({
+    apiKey: LOCAL_USER.apiKey,
+    name: LOCAL_USER.name,
+    apiServerUrl: `http://${HOST}:${PORT}`,
+  }),
   "exa.seat_management_pb.SeatManagementService/ExchangeDevinCode": () => ({
     apiKey: LOCAL_USER.apiKey,
     name: LOCAL_USER.name,
@@ -294,7 +299,28 @@ const server = createServer(async (req, res) => {
 
     if (handler) {
       const result = handler(body, config);
-      sendJson(res, 200, result);
+      const reqContentType = req.headers["content-type"] || "";
+      
+      if (reqContentType.includes("application/proto")) {
+        // LS binary sends proto, expects proto response
+        // Empty protobuf body (0 bytes) is a valid message with default fields
+        res.writeHead(200, {
+          "Content-Type": "application/proto",
+          "Content-Length": 0,
+          "Access-Control-Allow-Origin": "*",
+        });
+        res.end();
+      } else {
+        // Extension (JSON mode) sends JSON, expects JSON response
+        const bodyStr = JSON.stringify(result);
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(bodyStr),
+          "Connect-Protocol-Version": "1",
+          "Access-Control-Allow-Origin": "*",
+        });
+        res.end(bodyStr);
+      }
       return;
     }
 
