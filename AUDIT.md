@@ -160,5 +160,6 @@ Step-by-step progress with evidence. One step at a time, in order.
 | Offline proof (user-level proxy) | PASS | `hello-offline.txt` |
 | Exact hosts-file offline proof | BLOCKED | current shell is unelevated; hosts file is read-only for this user |
 | Uppcoder deployment | BLOCKED | no portal credentials, CLI, or stored token on this machine |
+| Computer-use exploration (Step 6) | BLOCKED | `node_repl`/Computer Use runtime unavailable; file REA used instead |
 | GitHub Release v1.0.0 | PASS | public release page and installer verified, HTTP 200 |
 | Credential hygiene | PASS | clean remote URL; no tracked credential material |
