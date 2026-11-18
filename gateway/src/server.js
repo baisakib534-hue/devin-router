@@ -10,11 +10,13 @@ import { createServer } from "http";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { gunzipSync } from "zlib";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "..", "data");
 const LOG_FILE = join(DATA_DIR, "gateway.log");
 const CONFIG_FILE = join(DATA_DIR, "config.json");
+const IDENTITY_FILE = join(DATA_DIR, "identity.json");
 mkdirSync(DATA_DIR, { recursive: true });
 
 const PORT = Number(process.env.GATEWAY_PORT || 20130);
@@ -69,6 +71,135 @@ function readBody(req) {
   });
 }
 
+function readVarint(buffer, offset) {
+  let value = 0n;
+  let shift = 0n;
+  let cursor = offset;
+  while (cursor < buffer.length) {
+    const byte = buffer[cursor++];
+    value |= BigInt(byte & 0x7f) << shift;
+    if ((byte & 0x80) === 0) break;
+    shift += 7n;
+  }
+  return { value, end: cursor };
+}
+
+function decodeProtoFields(buffer) {
+  const fields = [];
+  let offset = 0;
+  while (offset < buffer.length) {
+    const key = readVarint(buffer, offset);
+    offset = key.end;
+    const fieldNumber = Number(key.value >> 3n);
+    const wireType = Number(key.value & 7n);
+    if (wireType === 0) {
+      const value = readVarint(buffer, offset);
+      offset = value.end;
+      fields.push({ fieldNumber, wireType, value: Number(value.value) });
+    } else if (wireType === 2) {
+      const length = readVarint(buffer, offset);
+      offset = length.end;
+      const end = offset + Number(length.value);
+      if (end > buffer.length) break;
+      fields.push({ fieldNumber, wireType, value: buffer.subarray(offset, end) });
+      offset = end;
+    } else if (wireType === 5) {
+      const end = offset + 4;
+      if (end > buffer.length) break;
+      fields.push({ fieldNumber, wireType, value: buffer.subarray(offset, end) });
+      offset = end;
+    } else if (wireType === 1) {
+      const end = offset + 8;
+      if (end > buffer.length) break;
+      fields.push({ fieldNumber, wireType, value: buffer.subarray(offset, end) });
+      offset = end;
+    } else {
+      break;
+    }
+  }
+  return fields;
+}
+
+function unwrapConnectProtoMessage(buffer) {
+  if (buffer.length >= 5 && buffer.readUInt32BE(1) === buffer.length - 5) {
+    const message = buffer.subarray(5);
+    if (buffer[0] & 1) return gunzipSync(message);
+    return message;
+  }
+  return buffer;
+}
+
+function decodeChatMessageRequest(buffer) {
+  const fields = decodeProtoFields(unwrapConnectProtoMessage(buffer));
+  const text = (fieldNumber) => fields
+    .filter((field) => field.fieldNumber === fieldNumber && field.wireType === 2)
+    .map((field) => field.value.toString("utf8"))[0] || "";
+  const tools = fields
+    .filter((field) => field.fieldNumber === 10 && field.wireType === 2)
+    .map((field) => {
+      const toolFields = decodeProtoFields(field.value);
+      const toolText = (fieldNumber) => toolFields
+        .filter((toolField) => toolField.fieldNumber === fieldNumber && toolField.wireType === 2)
+        .map((toolField) => toolField.value.toString("utf8"))[0] || "";
+      return {
+        name: toolText(1),
+        description: toolText(2),
+        jsonSchemaString: toolText(3),
+      };
+    });
+  const chatMessages = fields
+    .filter((field) => field.fieldNumber === 3 && field.wireType === 2)
+    .map((field) => {
+      const messageFields = decodeProtoFields(field.value);
+      const prompt = messageFields
+        .filter((messageField) => messageField.fieldNumber === 3 && messageField.wireType === 2)
+        .map((messageField) => messageField.value.toString("utf8"))[0] || "";
+      const source = messageFields
+        .filter((messageField) => messageField.fieldNumber === 2 && messageField.wireType === 0)
+        .map((messageField) => messageField.value)[0] || 0;
+      const toolCallId = messageFields
+        .filter((messageField) => messageField.fieldNumber === 7 && messageField.wireType === 2)
+        .map((messageField) => messageField.value.toString("utf8"))[0] || "";
+      const toolCalls = messageFields
+        .filter((messageField) => messageField.fieldNumber === 6 && messageField.wireType === 2)
+        .map((messageField) => {
+          const callFields = decodeProtoFields(messageField.value);
+          const callText = (fieldNumber) => callFields
+            .filter((callField) => callField.fieldNumber === fieldNumber && callField.wireType === 2)
+            .map((callField) => callField.value.toString("utf8"))[0] || "";
+          return { id: callText(1), name: callText(2), argumentsJson: callText(3) };
+        });
+      return { source, prompt, toolCallId, toolCalls };
+    });
+  return {
+    prompt: text(2),
+    userPrompt: chatMessages.find((message) => message.source === 1 && !/^<(system_info|available_skills|system_guidance)>/.test(message.prompt))?.prompt || "",
+    chatMessages,
+    chatModelName: text(14),
+    chatModelUid: text(21),
+    tools,
+  };
+}
+
+function chatMessagesToOpenAiMessages(messages) {
+  const relevantMessages = messages.filter((message) =>
+    !/^<(system_info|available_skills|system_guidance)>/.test(message.prompt)
+  );
+  return relevantMessages.map((message) => {
+    if (message.source === 4) {
+      return {
+        role: "tool",
+        tool_call_id: message.toolCallId || "router-tool-call-1",
+        content: message.prompt,
+      };
+    }
+    if (message.source === 2 || message.source === 5) {
+      return { role: "system", content: message.prompt };
+    }
+    return { role: "user", content: message.prompt };
+  });
+}
+
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(status, {
@@ -89,22 +220,188 @@ function sendText(res, status, text) {
   res.end(text);
 }
 
-// ─── Auth (fixed local user) ───
-const LOCAL_USER = {
-  id: "local-user-001",
-  email: "owner@local",
-  name: "Owner",
-  account: { label: "Owner", id: "owner@local" },
-  apiKey: "devin-router-local-key",
-  planInfo: {
-    canUseCascade: true,
-    canUseCli: true,
-    isAdmin: true,
-    isDevin: true,
-    planSlug: "local",
-    subscriptionStatus: "active",
-  },
+function encodeVarint(value) {
+  const chunks = [];
+  let remaining = value;
+  do {
+    let byte = remaining & 0x7f;
+    remaining = Math.floor(remaining / 128);
+    if (remaining > 0) byte |= 0x80;
+    chunks.push(Buffer.from([byte]));
+  } while (remaining > 0);
+  return Buffer.concat(chunks);
+}
+
+function encodeLengthDelimited(fieldNumber, value) {
+  const key = encodeVarint(fieldNumber << 3 | 2);
+  const data = Buffer.isBuffer(value) ? value : Buffer.from(String(value), "utf8");
+  return Buffer.concat([key, encodeVarint(data.length), data]);
+}
+
+function encodeChatToolCall({ id, name, argumentsJson }) {
+  return Buffer.concat([
+    encodeLengthDelimited(1, id),
+    encodeLengthDelimited(2, name),
+    encodeLengthDelimited(3, argumentsJson),
+  ]);
+}
+
+function encodeGetChatMessageResponse({ messageId, deltaText, stopReason, deltaToolCalls = [] }) {
+  const parts = [];
+  if (messageId) parts.push(encodeLengthDelimited(1, messageId));
+  if (deltaText) parts.push(encodeLengthDelimited(3, deltaText));
+  if (stopReason) parts.push(encodeVarintField(5, stopReason));
+  parts.push(...deltaToolCalls.map((toolCall) => encodeLengthDelimited(6, encodeChatToolCall(toolCall))));
+  return Buffer.concat(parts);
+}
+
+function connectStreamFrame(message) {
+  const header = Buffer.alloc(5);
+  header.writeUInt8(0, 0);
+  header.writeUInt32BE(message.length, 1);
+  return Buffer.concat([header, message]);
+}
+
+function connectEndStreamFrame() {
+  const endStreamResponse = Buffer.from("{}", "utf8");
+  const frame = Buffer.alloc(5 + endStreamResponse.length);
+  frame.writeUInt8(0x02, 0);
+  frame.writeUInt32BE(endStreamResponse.length, 1);
+  endStreamResponse.copy(frame, 5);
+  return frame;
+}
+
+function encodeVarintField(fieldNumber, value) {
+  return Buffer.concat([encodeVarint(fieldNumber << 3 | 0), encodeVarint(value)]);
+}
+
+function encodeBoolField(fieldNumber, value) {
+  return encodeVarintField(fieldNumber, value ? 1 : 0);
+}
+
+function encodeDevinPlanInfo() {
+  const user = localUser();
+  const parts = [
+    encodeBoolField(1, true),
+    encodeBoolField(2, true),
+    encodeBoolField(3, true),
+    encodeLengthDelimited(4, "local-router"),
+    encodeLengthDelimited(5, `http://${HOST}:${PORT}`),
+    encodeLengthDelimited(7, `http://${HOST}:${PORT}`),
+  ];
+  if (user.name) parts.push(encodeLengthDelimited(8, user.name));
+  return Buffer.concat(parts);
+}
+
+function encodePlanInfo() {
+  return Buffer.concat([
+    encodeVarintField(1, 17),
+    encodeLengthDelimited(2, "Devin Max"),
+    encodeBoolField(3, true),
+    encodeBoolField(4, true),
+    encodeBoolField(5, true),
+    encodeBoolField(15, true),
+    encodeBoolField(16, true),
+    encodeBoolField(17, true),
+    encodeBoolField(18, true),
+    encodeBoolField(19, true),
+    encodeBoolField(20, true),
+    encodeBoolField(25, true),
+    encodeBoolField(27, true),
+    encodeBoolField(28, true),
+    encodeBoolField(29, true),
+    encodeBoolField(31, true),
+    encodeLengthDelimited(33, encodeDevinPlanInfo()),
+    encodeBoolField(34, true),
+    encodeVarintField(35, 3),
+    encodeBoolField(36, true),
+    encodeBoolField(37, true),
+  ]);
+}
+
+function encodePlanStatus() {
+  return encodeLengthDelimited(1, encodePlanInfo());
+}
+
+function encodeUserStatus() {
+  const user = localUser();
+  const parts = [encodeBoolField(1, true)];
+  if (user.name) parts.push(encodeLengthDelimited(3, user.name));
+  if (user.email) parts.push(encodeLengthDelimited(7, user.email));
+  parts.push(
+    encodeVarintField(10, 17),
+    encodeLengthDelimited(13, encodePlanStatus()),
+    encodeBoolField(31, true),
+  );
+  if (user.id) parts.push(encodeLengthDelimited(36, user.id));
+  return Buffer.concat(parts);
+}
+
+function encodeSeatManagementUser() {
+  const user = localUser();
+  const parts = [encodeLengthDelimited(1, user.apiKey)];
+  if (user.name) parts.push(encodeLengthDelimited(2, user.name));
+  if (user.email) parts.push(encodeLengthDelimited(3, user.email));
+  if (user.id) parts.push(encodeLengthDelimited(6, user.id));
+  parts.push(encodeBoolField(13, true));
+  return Buffer.concat(parts);
+}
+
+function encodeGetUserStatusResponse() {
+  return Buffer.concat([
+    encodeLengthDelimited(1, encodeUserStatus()),
+    encodeLengthDelimited(2, encodePlanInfo()),
+  ]);
+}
+
+function encodeGetCurrentUserResponse() {
+  return Buffer.concat([
+    encodeLengthDelimited(1, encodeSeatManagementUser()),
+    encodeLengthDelimited(6, encodePlanInfo()),
+  ]);
+}
+
+const binaryResponseEncoders = {
+  "exa.seat_management_pb.SeatManagementService/GetUserStatus": encodeGetUserStatusResponse,
+  "exa.language_server_pb.LanguageServerService/GetUserStatus": encodeGetUserStatusResponse,
+  "exa.seat_management_pb.SeatManagementService/GetCurrentUser": encodeGetCurrentUserResponse,
 };
+
+// ─── Auth (local gateway user) ───
+// Identity is copied from Devin's own profile at Apply time. It is never
+// invented here: a fresh login-less install simply has empty identity fields.
+function loadIdentityFile() {
+  try {
+    const parsed = JSON.parse(readFileSync(IDENTITY_FILE, "utf8"));
+    return {
+      id: typeof parsed.id === "string" ? parsed.id : "",
+      email: typeof parsed.email === "string" ? parsed.email : "",
+      name: typeof parsed.name === "string" ? parsed.name : "",
+    };
+  } catch {
+    return { id: "", email: "", name: "" };
+  }
+}
+
+function localUser() {
+  const identity = loadIdentityFile();
+  const id = identity.id || identity.email;
+  return {
+    id,
+    email: identity.email,
+    name: identity.name,
+    account: { label: identity.name || identity.email, id: identity.email || id },
+    apiKey: "devin-router-local-key",
+    planInfo: {
+      canUseCascade: true,
+      canUseCli: true,
+      isAdmin: true,
+      isDevin: true,
+      planSlug: "devin-max",
+      subscriptionStatus: "active",
+    },
+  };
+}
 
 // ─── Connect-RPC method handlers ───
 // Devin uses Connect protocol: POST /<package>.<Service>/<Method>
@@ -113,33 +410,49 @@ const LOCAL_USER = {
 
 const connectHandlers = {
   // SeatManagementService
-  "exa.seat_management_pb.SeatManagementService/GetUserStatus": (body, config) => {
+  "exa.seat_management_pb.SeatManagementService/GetUserStatus": () => {
+    const user = localUser();
     return {
       userStatus: {
+        name: user.name,
+        email: user.email,
+        userId: user.id,
         planStatus: {
           planInfo: {
+            teamsTier: 17,
+            planName: "Devin Max",
             canUseCascade: true,
             canUseCli: true,
             isAdmin: true,
             isDevin: true,
-            planSlug: "local",
-            subscriptionStatus: "active",
+            hasPaidFeatures: true,
+            devinInfo: {
+              canUseCascade: true,
+              canUseCli: true,
+              isAdmin: true,
+              accountDisplayName: user.name,
+            },
           },
         },
       },
     };
   },
-  "exa.seat_management_pb.SeatManagementService/GetCurrentUser": () => ({
-    user: { id: LOCAL_USER.id, email: LOCAL_USER.email, name: LOCAL_USER.name },
-  }),
+  "exa.seat_management_pb.SeatManagementService/GetCurrentUser": () => {
+    const user = localUser();
+    return { user: { id: user.id, email: user.email, name: user.name } };
+  },
   "exa.seat_management_pb.SeatManagementService/GetLicense": () => ({
     license: { valid: true, tier: "local" },
   }),
-  "exa.seat_management_pb.SeatManagementService/RegisterUser": () => ({
-    apiKey: LOCAL_USER.apiKey,
-    name: LOCAL_USER.name,
-    apiServerUrl: `http://${HOST}:${PORT}`,
-  }),
+  "exa.seat_management_pb.SeatManagementService/RegisterUser": () => {
+    const user = localUser();
+    return {
+      apiKey: user.apiKey,
+      name: user.name,
+      email: user.email,
+      apiServerUrl: `http://${HOST}:${PORT}`,
+    };
+  },
   "exa.seat_management_pb.SeatManagementService/GetSelfDevinSessionToken": () => ({
     sessionToken: "devin-session-token$local-router",
   }),
@@ -176,50 +489,51 @@ const connectHandlers = {
     const provider = getProvider();
     if (!provider) throw new Error("No provider configured");
     
-    // Parse request body (protobuf or JSON)
-    let userMessage = "";
-    let model = config.defaultModel || "auto";
-    
-    try {
-      if (body && body.length > 0) {
-        const bodyStr = body.toString("utf8");
-        // Try to extract message from protobuf or JSON
-        if (bodyStr.startsWith("{")) {
-          const parsed = JSON.parse(bodyStr);
-          userMessage = parsed.message || parsed.prompt || parsed.text || "";
-          model = parsed.model || model;
-        } else {
-          // Protobuf: try to find text content
-          userMessage = bodyStr.replace(/[^\x20-\x7E]/g, " ").trim();
-        }
-      }
-    } catch (e) {
-      // Ignore parse errors, use empty message
-    }
-    
+    const chatRequest = body ? decodeChatMessageRequest(body) : { prompt: "", tools: [] };
+    const userMessage = chatRequest.userPrompt || chatRequest.prompt;
+    const model = config.defaultModel || chatRequest.chatModelUid || chatRequest.chatModelName || "auto";
+
     log({
       time: new Date().toISOString(),
       event: "chat-message",
       model,
       provider: provider.name,
       messageLength: userMessage.length,
+      tools: chatRequest.tools.map((tool) => tool.name),
+      messageSources: chatRequest.chatMessages.map((message) => message.source),
     });
     
     // Forward to provider
     try {
       const response = await forwardToProvider({
         model,
-        messages: [{ role: "user", content: userMessage }],
+        messages: chatMessagesToOpenAiMessages(chatRequest.chatMessages),
+        tools: chatRequest.tools.map((tool) => ({
+          type: "function",
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: JSON.parse(tool.jsonSchemaString || "{}"),
+          },
+        })),
       }, provider);
       
       if (response && response.ok) {
         const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || "Done";
-        return {
-          message: reply,
-          model,
-          finish_reason: "stop",
-        };
+        const choice = data.choices?.[0];
+        const providerToolCalls = choice?.message?.tool_calls || [];
+        return [
+          {
+            messageId: "router-message-1",
+            deltaText: choice?.message?.content || "",
+            deltaToolCalls: providerToolCalls.map((toolCall) => ({
+              id: toolCall.id || "router-tool-call-1",
+              name: toolCall.function?.name || "write",
+              argumentsJson: toolCall.function?.arguments || "{}",
+            })),
+          },
+          { messageId: "router-message-1", stopReason: 2 },
+        ];
       }
     } catch (e) {
       log({
@@ -230,18 +544,19 @@ const connectHandlers = {
     }
     
     // Fallback response
-    return {
-      message: "I will create the file now.",
-      model,
-      finish_reason: "stop",
-    };
+    return [
+      { messageId: "router-message-1", deltaText: "I will create the file now." },
+      { messageId: "router-message-1", stopReason: 2 },
+    ];
   },
   "exa.api_server_pb.ApiServerService/GetCliModelConfigs": () => ({
-    models: [
-      { name: "mock-gpt-4", displayName: "Mock GPT-4", enabled: true },
-      { name: "mock-llama-3", displayName: "Mock Llama 3", enabled: true },
-      { name: "mock-claude", displayName: "Mock Claude", enabled: true },
-    ],
+    models: config.defaultModel
+      ? [{ name: config.defaultModel, displayName: config.defaultModel, enabled: true }]
+      : [
+          { name: "mock-gpt-4", displayName: "Mock GPT-4", enabled: true },
+          { name: "mock-llama-3", displayName: "Mock Llama 3", enabled: true },
+          { name: "mock-claude", displayName: "Mock Claude", enabled: true },
+        ],
   }),
   "exa.auth_pb.AuthService/GetUserJwt": () => ({
     jwt: "local-router-jwt-token",
@@ -256,16 +571,14 @@ const connectHandlers = {
   }),
   "exa.seat_management_pb.SeatManagementService/GetUserSettings": () => ({}),
   "exa.seat_management_pb.SeatManagementService/GetUserPreferences": () => ({}),
-  "exa.seat_management_pb.SeatManagementService/MigrateApiKey": () => ({
-    apiKey: LOCAL_USER.apiKey,
-    name: LOCAL_USER.name,
-    apiServerUrl: `http://${HOST}:${PORT}`,
-  }),
-  "exa.seat_management_pb.SeatManagementService/ExchangeDevinCode": () => ({
-    apiKey: LOCAL_USER.apiKey,
-    name: LOCAL_USER.name,
-    apiServerUrl: `http://${HOST}:${PORT}`,
-  }),
+  "exa.seat_management_pb.SeatManagementService/MigrateApiKey": () => {
+    const user = localUser();
+    return { apiKey: user.apiKey, name: user.name, email: user.email, apiServerUrl: `http://${HOST}:${PORT}` };
+  },
+  "exa.seat_management_pb.SeatManagementService/ExchangeDevinCode": () => {
+    const user = localUser();
+    return { apiKey: user.apiKey, name: user.name, email: user.email, apiServerUrl: `http://${HOST}:${PORT}` };
+  },
   "exa.language_server_pb.LanguageServerService/AcceptLanguageServerMetadata": () => ({}),
   "exa.language_server_pb.LanguageServerService/Heartbeat": () => ({}),
   "exa.language_server_pb.LanguageServerService/GetCompletions": () => ({
@@ -335,6 +648,21 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (req.method === "GET" && path === "/v3/self") {
+    log({ time: new Date().toISOString(), method: req.method, path, status: 200, ms: Date.now() - started });
+    const user = localUser();
+    const self = {
+      account_id: "local-router",
+      organization_id: "local-router",
+      plan: "devin-max",
+    };
+    if (user.id) self.user_id = user.id;
+    if (user.name) self.name = user.name;
+    if (user.email) self.email = user.email;
+    sendJson(res, 200, self);
+    return;
+  }
+
   // Gateway management endpoints
   if (path === "/gateway/config" && req.method === "GET") {
     const safeConfig = { ...config };
@@ -380,21 +708,40 @@ const server = createServer(async (req, res) => {
       bodySize: body.length,
       status: handler ? 200 : 501,
       ms: Date.now() - started,
+      contentType: req.headers["content-type"],
+      contentEncoding: req.headers["content-encoding"],
     });
 
     if (handler) {
       const result = await handler(body, config);
       const reqContentType = req.headers["content-type"] || "";
-      
-      if (reqContentType.includes("application/proto") && !handlerKey.includes("GetChatMessage")) {
-        // LS binary sends proto, expects proto response
-        // Empty protobuf body (0 bytes) is a valid message with default fields
-        res.writeHead(200, {
-          "Content-Type": "application/proto",
-          "Content-Length": 0,
-          "Access-Control-Allow-Origin": "*",
-        });
-        res.end();
+
+      const isConnectProto = reqContentType.includes("application/connect+proto");
+      const isProto = reqContentType.includes("application/proto");
+      if (isConnectProto || isProto) {
+        if (isConnectProto && handlerKey === "exa.api_server_pb.ApiServerService/GetChatMessage") {
+          const payload = Buffer.concat([
+            ...result.map((message) => connectStreamFrame(encodeGetChatMessageResponse(message))),
+            connectEndStreamFrame(),
+          ]);
+          res.writeHead(200, {
+            "Content-Type": "application/connect+proto",
+            "Content-Length": payload.length,
+            "Connect-Protocol-Version": "1",
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(payload);
+        } else {
+          // LS binary sends proto, expects proto response
+          // Empty protobuf body (0 bytes) is a valid message with default fields
+          const responseBody = binaryResponseEncoders[handlerKey]?.() || Buffer.alloc(0);
+          res.writeHead(200, {
+            "Content-Type": "application/proto",
+            "Content-Length": responseBody.length,
+            "Access-Control-Allow-Origin": "*",
+          });
+          res.end(responseBody);
+        }
       } else {
         // Extension (JSON mode) sends JSON, expects JSON response
         const bodyStr = JSON.stringify(result);

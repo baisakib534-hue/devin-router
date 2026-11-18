@@ -54,6 +54,7 @@ function generateResponse(body) {
   } = body;
 
   const lastMessage = messages[messages.length - 1];
+  const lastRole = lastMessage?.role || "user";
   const userText =
     lastMessage?.content?.text || lastMessage?.content || "";
 
@@ -62,22 +63,26 @@ function generateResponse(body) {
     (t) =>
       t.function?.name?.includes("create_file") ||
       t.function?.name?.includes("write_file") ||
+      t.function?.name === "write" ||
       t.function?.name?.includes("create")
   );
 
-  if (createFileTool && /creat|write/i.test(userText)) {
+  if (createFileTool && lastRole === "user" && /creat|write/i.test(userText)) {
     const filename = (userText.match(/file\s+named?\s+(\S+)/i) ||
       userText.match(/(\S+\.txt)/i) || [])[1] || "hello.txt";
     const contentMatch = userText.match(
-      /containing\s+(?:exactly\s+)?["\x27]?(.+?)["\x27]?\s*$/i
+      /containing\s+(?:exactly\s*:?\s*)?["\x27]?(.+?)["\x27]?\s*$/i
     );
     const content = contentMatch ? contentMatch[1] : "mock-content";
+    const schemaProperties = createFileTool.function?.parameters?.properties;
+    const pathKey = schemaProperties && "file_path" in schemaProperties ? "file_path" : "path";
+    const toolArgs = JSON.stringify({ [pathKey]: filename, content });
 
     if (stream) {
       return {
         toolCall: true,
         toolName: createFileTool.function.name,
-        toolArgs: JSON.stringify({ path: filename, content }),
+        toolArgs,
         model,
       };
     }
@@ -98,10 +103,7 @@ function generateResponse(body) {
                 type: "function",
                 function: {
                   name: createFileTool.function.name,
-                  arguments: JSON.stringify({
-                    path: filename,
-                    content,
-                  }),
+                  arguments: toolArgs,
                 },
               },
             ],

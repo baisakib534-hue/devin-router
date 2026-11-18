@@ -55,6 +55,14 @@ Step-by-step progress with evidence. One step at a time, in order.
 - GetChatMessage (inference endpoint) reaches gateway and forwards to mock provider
 - Mock provider receives /v1/chat/completions requests
 
+## Phase 2 - Step 13 mock E2E: PASS
+- Fixed Connect protocol detection: `application/connect+proto` was falling through to JSON.
+- Added gzip Connect request-frame decoding and protobuf request parsing.
+- Added OpenAI-compatible tool definitions forwarding and `delta_tool_calls` protobuf encoding.
+- Correctly handles Devin's `write` tool schema (`file_path` + `content`) and tool-result follow-up turns.
+- E2E command: `devin.exe -p --permission-mode dangerous -- "Create a file named hello-router.txt containing exactly: HELLO FROM DEVIN ROUTER"`.
+- Proof: `test-project/mock-e2e-pass/hello-router.txt`, length 23, contents `HELLO FROM DEVIN ROUTER`; CLI exits 0.
+
 ### REMAINING FOR FULL E2E
 - GetChatMessage response needs proper protobuf encoding (CLI expects proto, gateway returns JSON)
 - Response might need streaming format (Connect-RPC server-streaming)
@@ -66,3 +74,50 @@ Step-by-step progress with evidence. One step at a time, in order.
 - GetChatMessage (forwards to provider)
 - RecordAnalyticsEvent, BatchRecordAnalyticsEvents, RecordAsyncTelemetry
 - GetAllAcpRegistries, AcceptLanguageServerMetadata, Heartbeat
+
+## Phase 2 - Step 14 real provider E2E: PASS (2026-11-18)
+- Direct provider probe: HTTP 200, model `openai/gpt-oss-120b` (key read from the task attachment, never printed).
+- Devin agent E2E: `test-project/real-e2e/hello-real.txt` = `HELLO FROM DEVIN ROUTER REAL` (28 bytes).
+- Gateway log: six `chat-message` + `provider-forward` entries, `"provider":"realtest"`, `"model":"auto"` (17:24:55–17:25:20Z).
+- Config restored to mock after the run.
+- Note: BUG-002 — the earlier "testprovider" proof was the mock; fixed and re-run for real.
+
+## Phase 5 / OWNER FINAL-USE fresh-install E2E: PASS (2026-11-18)
+- Throwaway install: `test-project/fresh-e2e/Devin` (never logged in; separate user-data dir).
+- User-data locations identified from REA: `%APPDATA%\Devin` (`User/globalStorage/state.vscdb`, `User/settings.json`, `credentials.toml`) and the copy-local `user-data/`.
+- Apply against the installed target wrote a timestamped backup: `%LOCALAPPDATA%\DevinRouter\backups\20261118-172709-installed` (manifest + 2 patched files).
+- Mock run: `test-project/fresh-e2e/work/hello-fresh.txt` = `HELLO FROM DEVIN ROUTER MOCK` (28 bytes).
+- Real-provider run: `test-project/fresh-e2e/work/hello-real-fresh.txt` = `HELLO FROM DEVIN ROUTER REAL FRESH` (34 bytes); gateway log shows `realtest` forwards.
+- UNAPPLY: `{"restored":2,"settingsRestored":false,"removedCreatedFiles":1}`; SHA256 of both patched `extension.js` files equals the backup copies (byte-for-byte restore).
+- Apply status after unapply: `apiServerUrl: null`.
+
+## Current service status (verified 2026-11-18)
+- website 3000 (PID 10740), mock 11435 (16112), gateway 20130 (13732), local-app 20140 (12228), 9router 20128 (4772, untouched).
+- `/api/healthz` = OK; local app `/api/status` = gatewayHealthy true; all website pages HTTP 200; `/api/sync/config` 401 unauthenticated / 200 with connector creds.
+
+## Known gaps (honest, not claimed as done)
+- Local app: standalone provider entry, tray, Background Run, Start-with-Windows and installer are not complete.
+- Website: built and running, but not deployed to Uppcoder.
+- GitHub Release v1.0.0 + installer attachment not created.
+- Screenshots in `repo/test-project/` are low-resolution/marginal; probe JSON + E2E files are the strong evidence.
+## Phase 4 - Local app: PASS (2026-11-18, rebuilt)
+- Single Go binary, no Electron. `local-app/bin/devin-router-local-v6.exe` = 10,940,928 bytes.
+- Modes: WEBSITE CONNECTED (connector login + sync) and LOCAL STANDALONE (local providers/models, no website).
+- Providers/models CRUD + select; Apply checklist includes "Account presentation: Devin Max plan".
+- Background Run: verified ON starts the bundled gateway (port 20231/20333/20334/20335/20336/20337/20338 across tests) and OFF closes the port.
+- Start with Windows: writes/removes `HKCU\...\Run\DevinRouter = "<exe>" --background`.
+- Standalone E2E: `test-project/standalone-e2e/hello-standalone.txt` = `HELLO FROM DEVIN ROUTER STANDALONE` (mock provider, no website call).
+- Installed-app E2E: `test-project/installed-app-e2e/hello-installed.txt` = `HELLO FROM DEVIN ROUTER INSTALLED APP` (bundled gateway).
+- Apply is idempotent across gateway-URL changes (regex matcher accepts pristine or already-applied URL).
+
+## Phase 4/6 - Installer: PASS (2026-11-18)
+- `repo/local-app/installer` builds `repo/local-app/bin/DevinRouterSetup.exe` = 19,275,776 bytes (18.4 MB, under the 25 MB gate).
+- Embeds the Go app (10.9 MB) + slim gateway (5.4 MB; `better-sqlite3` pruned to package.json/lib/prebuilt .node).
+- Installs to `%LOCALAPPDATA%\DevinRouter`, creates the Start Menu shortcut, sets the Start-with-Windows Run key, warns if Node is missing.
+- Clean-install tests (isolated LOCALAPPDATA dirs `installer-test2..test6`): files, shortcut, Run key, app startup, bundled gateway startup all verified.
+- Installer auto-launch removed: the launched app died with the setup job; the app starts correctly from the shortcut/manual launch.
+
+## Installed-target isolation: PASS (after BUG-003 fix)
+- `--user-data-dir` / `devUserDataDir` added so installed-target tests use the throwaway user-data.
+- Final proof: Apply output `settingsFile` = `test-project\fresh-e2e\user-data\User\settings.json`, `credentialsFile` = `test-project\fresh-e2e\user-data\credentials.toml`.
+- Owner `%APPDATA%\Devin` untouched: `User\settings.json` absent before and after; `credentials.toml` unmodified.

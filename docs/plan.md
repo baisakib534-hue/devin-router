@@ -8,10 +8,10 @@
 - 9: Route decision (F vs A). TODO.
 
 ## Phase 2: Gateway engine (steps 10–15)
-- 10: Mock provider (Node, port 11435). TODO.
-- 11: Gateway core (Node). TODO.
-- 12: Point devin-mod at Gateway. TODO.
-- 13: Mock E2E (hello.txt). TODO.
+- 10: Mock provider (Node, port 11435). DONE.
+- 11: Gateway core (Node). DONE.
+- 12: Point devin-mod at Gateway. DONE.
+- 13: Mock E2E (hello-router.txt). DONE.
 - 14: Real E2E (hello2.txt, test provider). TODO.
 - 15: Commit + push gateway/. TODO.
 
@@ -43,7 +43,7 @@
 - 34: Verify release. TODO.
 - 35: Finish REPORT.md. TODO.
 
-## ADD-ON — APPLY DOES THE ACCOUNT TOO (recorded 2026-11-18; SUPERSEDES the "CUSTOM ACCOUNT + PLAN" add-on)
+## ADD-ON — APPLY DOES THE ACCOUNT TOO (this SUPERSEDES the "CUSTOM ACCOUNT + PLAN" add-on — cancel its Account-page work if recorded)
 
 The owner's final design is simpler: NO Account page, NO name/email/plan fields anywhere. Prerequisite is only that Devin is logged in beforehand with the owner's real account (a free account is fine). The existing flow — select model → APPLY — must do BOTH jobs in one action:
 
@@ -53,3 +53,47 @@ The owner's final design is simpler: NO Account page, NO name/email/plan fields 
 No new UI: the Apply checklist gains one line, "Account presentation: <top tier name> plan". If your REA showed the app fetches plan data only at launch, the checklist adds "restart Devin to see the plan change". If a plan surface is TOKEN-BOUND (plan baked into a signed token), list it in REPORT.md under PLAN-GATED FEATURES as before — never claim it changed.
 
 PROOFS (REPORT.md): with a FREE account logged in and Apply done — screenshots of the account menu, settings and plan/billing surfaces showing the top-tier plan; one previously plan-gated LOCAL feature working; the same screenshots again after a full Devin relaunch (persistence).
+
+## ADD-ON — OWNER'S FINAL USE (apply this on top of the Devin Router prompt; where it conflicts, this wins)
+
+The owner will use the finished product like this: DELETE all of Devin (app + user data), install Devin FRESH, then connect it with the local app and run it on his own API. Build and prove for exactly that use:
+
+1. NO HIDDEN SESSION DEPENDENCY: nothing in the gateway, the wiring, or Apply may depend on the owner's current Devin login session/token existing. If any test passed only because a session was already present, that is a BUG — log it in BUGS.md and fix it so the flow works with zero prior login.
+2. FRESH-INSTALL END-TO-END TEST (add to Phase 5, mandatory): (a) identify Devin's user-data locations from your REA (app data / config / .codeium / .windsurf / devin config dirs) and rename them aside; (b) take a fresh copy of the install with NO user data — an install that has never been logged in anywhere; (c) run the whole product flow on it: local app Apply → launch → no login screen → agent creates hello-fresh.txt via the mock AND via the test provider; (d) restore the renamed user data afterwards. All proofs in REPORT.md. The build is not done if this test is missing or fails.
+3. APPLY MUST SUPPORT THE INSTALLED DEVIN: the shipped local app offers two Apply targets — "Devin (installed)" (the owner's real use) and "Devin copy (devin-mod)" (development). For the installed target: before changing ANYTHING, the app makes a full automatic backup of every file/setting it will touch (timestamped, listed in the Apply checklist), and UNAPPLY restores from that backup byte-for-byte. During YOUR development, keep using the devin-mod target only — never test the installed target on the owner's current install; prove the installed-target code path against a throwaway install copy in a separate folder instead.
+4. NO HARDCODED WIRING: Apply must detect how to point whatever Devin it targets (its version, its file layout, its backend-address location) at Apply time, from the app's own REA logic — a fresh install may be a newer Devin version than the dev copy, and Apply must either handle it or stop with a clear "unsupported version" message in the app, never a half-applied change.
+## STATUS SNAPSHOT (2026-11-18)
+
+- 1–4 (setup/audit): DONE
+- 5–9 (REA + route decision): DONE — Route F, evidence in docs/rea.md
+- 10–11 (mock + gateway core): DONE
+- 12 (point devin-mod at gateway): DONE
+- 13 (mock E2E): DONE — hello-router.txt
+- 14 (real provider E2E): DONE — hello-real.txt + hello-real-fresh.txt (BUG-002 fixed)
+- 15 (gateway commit/push): PARTIAL — gateway code complete; final push pending
+- 16–18 (website design/build/sync API): DONE
+- 19 (website local test loop): PARTIAL — pages/APIs verified; full click-through twice not re-run
+- 20 (README/DEPLOY): PARTIAL — website README exists; docs/DEPLOY.md still to write
+- 21–24 (local app design/build/connected/Apply): DONE
+- 25 (installer test loop + weight gate): PARTIAL — installer + install/run/apply/standalone/background verified; idle RAM/CPU not measured; tray not implemented
+- 26 (local-app commit/push): PENDING
+- 27 (fresh-user full product run): DONE — localapp-e2e/hello-localapp.txt
+- 28 (standalone run): DONE — standalone-e2e/hello-standalone.txt
+- 29 (parity + offline sweep): NOT DONE
+- 30 (fix + retest): DONE for BUG-001/002/003
+- 31 (final code pass): PARTIAL — repo tidy, .gitignore, no secrets; versioning pending
+- 32 (push): PENDING
+- 33 (GitHub Release v1.0.0 + installer): PENDING
+- 34 (verify release download): PENDING
+- 35 (finish REPORT.md): DONE (this file)
+
+Owner final-use add-on:
+- No hidden session dependency: DONE (BUG-001 fixed)
+- Fresh-install E2E (mock + real provider): DONE
+- Apply installed target with backup/byte-for-byte unapply: DONE (throwaway only; BUG-003 fixed for user-data isolation)
+- No hardcoded wiring / unsupported-version stop: DONE
+
+Account add-on:
+- Apply does route + top-tier plan presentation in one action: DONE
+- Identity not faked: DONE
+- PLAN-GATED (token-bound) features listed in REPORT.md: DONE

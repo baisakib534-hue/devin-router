@@ -4,6 +4,7 @@ node_modules/
 dist/
 build/
 *.exe
+*.exe~
 *.msi
 *.log
 .env
@@ -12,4 +13,6 @@ build/
 *.key
 config.local.json
 gateway/data/
-gateway/data/
+website/data/
+local-app/installer/assets/
+test-project/
