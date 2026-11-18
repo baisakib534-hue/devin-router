@@ -81,10 +81,10 @@ The owner will use the finished product like this: DELETE all of Devin (app + us
 - 28 (standalone run): DONE — standalone-e2e/hello-standalone.txt
 - 29 (parity + offline sweep): PARTIAL — source/runtime parity and proxy-offline E2E done; exact hosts-file block pending owner elevation
 - 30 (fix + retest): DONE for BUG-001/002/003
-- 31 (final code pass): PARTIAL — repo tidy, .gitignore, no secrets; versioning pending
-- 32 (push): PENDING
-- 33 (GitHub Release v1.0.0 + installer): PENDING
-- 34 (verify release download): PENDING
+- 31 (final code pass): DONE — repo tidy, .gitignore, no secrets; version/tag v1.0.0
+- 32 (push): DONE
+- 33 (GitHub Release v1.0.0 + installer): DONE
+- 34 (verify release download): DONE — HTTP 200, 16,366,592 bytes
 - 35 (finish REPORT.md): DONE (this file)
 
 Owner final-use add-on:
