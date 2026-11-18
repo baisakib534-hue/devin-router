@@ -161,4 +161,4 @@ Step-by-step progress with evidence. One step at a time, in order.
 | Exact hosts-file offline proof | BLOCKED | current shell is unelevated; hosts file is read-only for this user |
 | Uppcoder deployment | BLOCKED | no portal credentials, CLI, or stored token on this machine |
 | GitHub Release v1.0.0 | PASS | public release page and installer verified, HTTP 200 |
-| Credential hygiene | PASS | clean remote URL, no tracked `github_pat_` marker |
+| Credential hygiene | PASS | clean remote URL; no tracked credential material |
