@@ -144,3 +144,21 @@ Step-by-step progress with evidence. One step at a time, in order.
 - Production build: `next build` passes (25 routes).
 - Runtime test on fresh SQLite: `/`, `/signup`, `/login` HTTP 200; signup + login API pass.
 - Uppcoder deployment itself still requires portal credentials and is not claimed as completed.
+
+## Final gate matrix (2026-11-19)
+| Gate | Status | Evidence / blocker |
+|---|---|---|
+| Repo, website, local app, gateway, installer | PASS | main branch and Release v1.0.0 |
+| Mock provider E2E | PASS | `test-project/mock-e2e-pass/hello-router.txt` |
+| Real provider E2E | PASS | `test-project/real-e2e/hello-real.txt`, `hello-real-fresh.txt` |
+| Fresh-install / no-session E2E | PASS | `test-project/fresh-e2e/hello-fresh.txt`, `hello-real-fresh.txt` |
+| Installed-target backup / byte-for-byte UNAPPLY | PASS | backup manifests + SHA256 restore checks |
+| Account presentation (Devin Max) | PASS | gateway `GetUserStatus` probe, tier 17 |
+| Standalone mode | PASS | `test-project/standalone-e2e/hello-standalone.txt` |
+| Tray / weight gate | PASS | 42.08–50.09 MB, 0.00% CPU, installer 16,366,592 bytes |
+| Source parity | PASS | only two documented wiring files differ |
+| Offline proof (user-level proxy) | PASS | `hello-offline.txt` |
+| Exact hosts-file offline proof | BLOCKED | current shell is unelevated; hosts file is read-only for this user |
+| Uppcoder deployment | BLOCKED | no portal credentials, CLI, or stored token on this machine |
+| GitHub Release v1.0.0 | PASS | public release page and installer verified, HTTP 200 |
+| Credential hygiene | PASS | clean remote URL, no tracked `github_pat_` marker |

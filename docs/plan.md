@@ -70,13 +70,13 @@ The owner will use the finished product like this: DELETE all of Devin (app + us
 - 12 (point devin-mod at gateway): DONE
 - 13 (mock E2E): DONE — hello-router.txt
 - 14 (real provider E2E): DONE — hello-real.txt + hello-real-fresh.txt (BUG-002 fixed)
-- 15 (gateway commit/push): PARTIAL — gateway code complete; final push pending
+- 15 (gateway commit/push): DONE — gateway code complete and pushed
 - 16–18 (website design/build/sync API): DONE
 - 19 (website local test loop): DONE — production build, pages, signup, and login verified with the async SQLite/PostgreSQL data layer
 - 20 (README/DEPLOY): DONE — website README exists; docs/DEPLOY.md matches Uppcoder’s Next.js + PostgreSQL workflow
 - 21–24 (local app design/build/connected/Apply): DONE
 - 25 (installer test loop + weight gate): DONE — installer + install/run/apply/standalone/background/tray verified; idle RAM/CPU 42.08–50.09 MB at 0.00% CPU
-- 26 (local-app commit/push): PENDING
+- 26 (local-app commit/push): DONE — local app and installer pushed
 - 27 (fresh-user full product run): DONE — localapp-e2e/hello-localapp.txt
 - 28 (standalone run): DONE — standalone-e2e/hello-standalone.txt
 - 29 (parity + offline sweep): PARTIAL — source/runtime parity and proxy-offline E2E done; exact hosts-file block pending owner elevation
