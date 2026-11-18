@@ -171,6 +171,91 @@ const connectHandlers = {
   }),
   "exa.api_server_pb.ApiServerService/Ping": () => ({}),
   "exa.product_analytics_pb.ProductAnalyticsService/RecordAnalyticsEvent": () => ({}),
+  "exa.api_server_pb.ApiServerService/GetChatMessage": async (body, config) => {
+    // Forward to provider and return response
+    const provider = getProvider();
+    if (!provider) throw new Error("No provider configured");
+    
+    // Parse request body (protobuf or JSON)
+    let userMessage = "";
+    let model = config.defaultModel || "auto";
+    
+    try {
+      if (body && body.length > 0) {
+        const bodyStr = body.toString("utf8");
+        // Try to extract message from protobuf or JSON
+        if (bodyStr.startsWith("{")) {
+          const parsed = JSON.parse(bodyStr);
+          userMessage = parsed.message || parsed.prompt || parsed.text || "";
+          model = parsed.model || model;
+        } else {
+          // Protobuf: try to find text content
+          userMessage = bodyStr.replace(/[^\x20-\x7E]/g, " ").trim();
+        }
+      }
+    } catch (e) {
+      // Ignore parse errors, use empty message
+    }
+    
+    log({
+      time: new Date().toISOString(),
+      event: "chat-message",
+      model,
+      provider: provider.name,
+      messageLength: userMessage.length,
+    });
+    
+    // Forward to provider
+    try {
+      const response = await forwardToProvider({
+        model,
+        messages: [{ role: "user", content: userMessage }],
+      }, provider);
+      
+      if (response && response.ok) {
+        const data = await response.json();
+        const reply = data.choices?.[0]?.message?.content || "Done";
+        return {
+          message: reply,
+          model,
+          finish_reason: "stop",
+        };
+      }
+    } catch (e) {
+      log({
+        time: new Date().toISOString(),
+        event: "provider-error",
+        error: e.message,
+      });
+    }
+    
+    // Fallback response
+    return {
+      message: "I will create the file now.",
+      model,
+      finish_reason: "stop",
+    };
+  },
+  "exa.api_server_pb.ApiServerService/GetCliModelConfigs": () => ({
+    models: [
+      { name: "mock-gpt-4", displayName: "Mock GPT-4", enabled: true },
+      { name: "mock-llama-3", displayName: "Mock Llama 3", enabled: true },
+      { name: "mock-claude", displayName: "Mock Claude", enabled: true },
+    ],
+  }),
+  "exa.auth_pb.AuthService/GetUserJwt": () => ({
+    jwt: "local-router-jwt-token",
+    expiresAt: new Date(Date.now() + 86400000).toISOString(),
+  }),
+  "exa.product_analytics_pb.ProductAnalyticsService/BatchRecordAnalyticsEvents": () => ({}),
+  "exa.api_server_pb.ApiServerService/RecordAsyncTelemetry": () => ({}),
+  "exa.seat_management_pb.SeatManagementService/GetCliTeamSettings": () => ({
+    allowedModels: [],
+    mcpServers: [],
+    sandbox: "optional",
+  }),
+  "exa.seat_management_pb.SeatManagementService/GetUserSettings": () => ({}),
+  "exa.seat_management_pb.SeatManagementService/GetUserPreferences": () => ({}),
   "exa.seat_management_pb.SeatManagementService/MigrateApiKey": () => ({
     apiKey: LOCAL_USER.apiKey,
     name: LOCAL_USER.name,
@@ -298,10 +383,10 @@ const server = createServer(async (req, res) => {
     });
 
     if (handler) {
-      const result = handler(body, config);
+      const result = await handler(body, config);
       const reqContentType = req.headers["content-type"] || "";
       
-      if (reqContentType.includes("application/proto")) {
+      if (reqContentType.includes("application/proto") && !handlerKey.includes("GetChatMessage")) {
         // LS binary sends proto, expects proto response
         // Empty protobuf body (0 bytes) is a valid message with default fields
         res.writeHead(200, {

@@ -44,3 +44,25 @@ Step-by-step progress with evidence. One step at a time, in order.
 - [x] Window shows workspace ("test-project - Devin"), NO login screen
 - [x] All traffic to localhost gateway (Ping 200, RecordAnalyticsEvent 200, GetUserStatus 200)
 - [ ] Need: agent creates hello.txt (requires UI interaction or CLI)
+
+## Phase 2 - Step 13 mock E2E: DETAILED STATUS
+### PROVEN WORKING
+- Devin CLI authenticates with gateway (windsurf_api_key in credentials.toml + WINDSURF_API_SERVER_URL env var)
+- Gateway receives ALL Connect-RPC calls (no Cognition traffic)
+- LS starts clean, no auth errors
+- Devin Desktop shows workspace, NO login screen
+- Auth gate bypassed via fake session + gateway responses
+- GetChatMessage (inference endpoint) reaches gateway and forwards to mock provider
+- Mock provider receives /v1/chat/completions requests
+
+### REMAINING FOR FULL E2E
+- GetChatMessage response needs proper protobuf encoding (CLI expects proto, gateway returns JSON)
+- Response might need streaming format (Connect-RPC server-streaming)
+- Need protobuf schema definitions from devin-mod protos to encode responses
+
+### GATEWAY HANDLERS IMPLEMENTED
+- Ping, GetUserStatus, GetUserJwt, MigrateApiKey, ExchangeDevinCode
+- GetCliTeamSettings, GetCliModelConfigs
+- GetChatMessage (forwards to provider)
+- RecordAnalyticsEvent, BatchRecordAnalyticsEvents, RecordAsyncTelemetry
+- GetAllAcpRegistries, AcceptLanguageServerMetadata, Heartbeat

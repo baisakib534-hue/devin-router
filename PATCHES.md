@@ -29,3 +29,9 @@ Every change to devin-mod: file, before → after, why. Owner's installed Devin 
 - **Before**: `if(!e){let t=n.readDevCredentials();if(t!==void 0)return t}return[]}`
 - **After**: `if(!e){let t=n.readDevCredentials();if(t!==void 0)return t}return[{id:"local-router",accessToken:"devin-router-local-key",account:{label:"Local Owner",id:"local-owner"},scopes:[]}]}`
 - **Why**: When no saved session exists, returns a fixed local session to bypass the login screen.
+
+### Patch 4: useBinaryFormat JSON mode
+- **File**: `devin-mod/resources/app/extensions/windsurf/dist/extension.js` (4 occurrences) and `windsurf-auth/dist/extension.js` (1 occurrence)
+- **Before**: `useBinaryFormat:!0`
+- **After**: `useBinaryFormat:!1`
+- **Why**: Extension JavaScript uses JSON mode for Connect-RPC instead of binary protobuf. Note: LS binary still uses proto format internally.
