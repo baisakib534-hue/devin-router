@@ -9,6 +9,7 @@ Step-by-step progress with evidence. One step at a time, in order.
 - Devin copy size: ~1.29 GB.
 
 ## Steps
+- [x] 12. devin-mod pointed at gateway via codeium.apiServerUrl setting in user-data/User/settings.json. No file patches needed - VS Code config is native.
 - [x] 10. Mock provider built + tested (GET /v1/models, POST /v1/chat/completions, streaming, tool calls).
 - [x] 11. Gateway core built + tested (healthz, Connect-RPC auth, config management, logging, UNIMPLEMENTED handling).
 - [x] 5. Test project created (devin/test-project).
@@ -19,6 +20,7 @@ Step-by-step progress with evidence. One step at a time, in order.
 - [x] 2. Create devin-pristine/ (byte copy; launch once to prove it opens) and devin-mod/ (git init; commit "pristine").
 - [x] 3. Clone repo into repo/, create layout, commit + push "scaffold".
 - [x] 4. Skills check for Phase 1.
+
 
 
 
