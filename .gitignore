@@ -12,3 +12,4 @@ build/
 *.key
 config.local.json
 gateway/data/
+gateway/data/

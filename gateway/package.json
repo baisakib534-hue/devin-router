@@ -1,0 +1,13 @@
+{
+  "name": "devin-router-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "start:mock": "node src/mock-provider.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
