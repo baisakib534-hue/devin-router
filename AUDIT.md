@@ -24,3 +24,16 @@ Step-by-step progress with evidence. One step at a time, in order.
 
 
 
+
+## Phase 2 Progress (Step 12-13)
+- [x] 12. devin-mod pointed at gateway: WORKING
+  - Patch 1: `windsurf-auth/dist/extension.js` — removed FF() production check for codeium.apiServerUrl
+  - Patch 2: `windsurf/dist/extension.js` — forced LS spawn URLs to `http://127.0.0.1:20130`
+  - Patch 3: `windsurf-auth/dist/extension.js` — injected fake session when no saved session exists
+  - Settings: `devin-mod/user-data/User/settings.json` with `codeium.apiServerUrl` + `update.mode: none`
+  - Shared data renamed: `.devin-shared` -> `.devin-shared.bak`, `.devin` -> `.devin.bak2`
+- [~] 13. Mock E2E: IN PROGRESS
+  - LS running from devin-mod, connecting to gateway (Ping 200, GetUserStatus 200)
+  - Auth gate passed (fake session accepted)
+  - ACP registry fallback to default (devin-cli registered)
+  - Need: implement Connect-RPC protobuf responses (currently JSON causes content-type error)

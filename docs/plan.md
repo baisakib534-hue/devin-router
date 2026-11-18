@@ -42,3 +42,14 @@
 - 33: Create Release v1.0.0 with installer. TODO.
 - 34: Verify release. TODO.
 - 35: Finish REPORT.md. TODO.
+
+## ADD-ON — APPLY DOES THE ACCOUNT TOO (recorded 2026-11-18; SUPERSEDES the "CUSTOM ACCOUNT + PLAN" add-on)
+
+The owner's final design is simpler: NO Account page, NO name/email/plan fields anywhere. Prerequisite is only that Devin is logged in beforehand with the owner's real account (a free account is fine). The existing flow — select model → APPLY — must do BOTH jobs in one action:
+
+1. Route inference to the selected provider/model (already in the prompt), AND
+2. Make the app present the account as the HIGHEST plan tier: from Apply onward, the gateway answers the app's profile/plan/entitlement requests with the top-tier plan and full entitlements (the exact fields come from your Phase 1 REA of where the app reads plan data). Identity (name/email) is NOT faked — wherever the app already holds the real logged-in identity, it stays as is.
+
+No new UI: the Apply checklist gains one line, "Account presentation: <top tier name> plan". If your REA showed the app fetches plan data only at launch, the checklist adds "restart Devin to see the plan change". If a plan surface is TOKEN-BOUND (plan baked into a signed token), list it in REPORT.md under PLAN-GATED FEATURES as before — never claim it changed.
+
+PROOFS (REPORT.md): with a FREE account logged in and Apply done — screenshots of the account menu, settings and plan/billing surfaces showing the top-tier plan; one previously plan-gated LOCAL feature working; the same screenshots again after a full Devin relaunch (persistence).

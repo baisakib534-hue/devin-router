@@ -169,6 +169,18 @@ const connectHandlers = {
   "exa.language_server_pb.LanguageServerService/GetModelProviders": () => ({
     providers: [],
   }),
+  "exa.api_server_pb.ApiServerService/Ping": () => ({}),
+  "exa.product_analytics_pb.ProductAnalyticsService/RecordAnalyticsEvent": () => ({}),
+  "exa.seat_management_pb.SeatManagementService/ExchangeDevinCode": () => ({
+    apiKey: LOCAL_USER.apiKey,
+    name: LOCAL_USER.name,
+    apiServerUrl: `http://${HOST}:${PORT}`,
+  }),
+  "exa.language_server_pb.LanguageServerService/AcceptLanguageServerMetadata": () => ({}),
+  "exa.language_server_pb.LanguageServerService/Heartbeat": () => ({}),
+  "exa.language_server_pb.LanguageServerService/GetCompletions": () => ({
+    completions: [],
+  }),
 };
 
 // ─── Inference translation ───
