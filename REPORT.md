@@ -142,7 +142,7 @@ Screenshots exist in `repo/test-project/` (`account-proof-*.png`, `persist-*.png
 
 ## 12. Known gaps (not claimed as done)
 
-- Exact hosts-file offline block: not run (user-level proxy proof completed instead).
+- Exact hosts-file offline block: completed 2026-11-19 — see section 9 (PASS; hosts restored, SHA256 match).
 - Website not deployed to Uppcoder (recipe in `docs/DEPLOY.md` exists; portal credentials are not available in this session).
 - Computer-use exploration (Step 6): not completed; the `node_repl`/Computer Use runtime is unavailable in this session, so file REA was used instead.
 - GitHub Release v1.0.0 is published: https://github.com/baisakib534-hue/devin-router/releases/tag/v1.0.0
