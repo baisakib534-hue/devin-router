@@ -130,12 +130,12 @@ Step-by-step progress with evidence. One step at a time, in order.
 - Idle process tree (Go app + Node gateway), 2 minutes / 13 samples: 42.08–50.09 MB RAM, 0.00% CPU.
 - Background Run API: ON starts the gateway, OFF closes it; Quit stops both.
 
-## Phase 5 - Parity + offline: PASS with one honest limitation (2026-11-19)
+## Phase 5 - Parity + offline: PASS (2026-11-19)
 - Skills used: architecture (scope), Golang Backend Development (runtime validation).
 - `git diff` in `devin-mod`: only the two documented wiring files changed.
 - Runtime parity: gateway serves the same Connect-RPC routes Devin normally calls.
 - Offline E2E: user-level proxy block (`127.0.0.1:9`, localhost bypass) still completed `hello-offline.txt` through gateway + mock.
-- Exact hosts-file block: attempted; Windows UAC was denied, so this specific proof remains pending owner elevation.
+- Exact hosts-file block: PASS — self-elevating `block-hosts.ps1` and `restore-hosts.ps1` used `Start-Process powershell -Verb RunAs`; all 11 Cognition/Windsurf/Codeium domains were blocked, Devin + gateway + mock provider created `test-project/offline-hosts-e2e/hello-hosts.txt` = `HELLO FROM DEVIN ROUTER OFFLINE HOSTS`, gateway evidence is in `test-project/offline-hosts-e2e/gateway-excerpt.jsonl`, and the restored hosts SHA256 matches `hosts-original.sha256.txt`.
 
 ## Phase 3 - Uppcoder/PostgreSQL compatibility: PASS locally (2026-11-19)
 - Skills used: architecture, frontend/API inspection from the existing website.
@@ -158,7 +158,7 @@ Step-by-step progress with evidence. One step at a time, in order.
 | Tray / weight gate | PASS | 42.08–50.09 MB, 0.00% CPU, installer 16,366,592 bytes |
 | Source parity | PASS | only two documented wiring files differ |
 | Offline proof (user-level proxy) | PASS | `hello-offline.txt` |
-| Exact hosts-file offline proof | BLOCKED | current shell is unelevated; hosts file is read-only for this user |
+| Exact hosts-file offline proof | PASS | `hello-hosts.txt`, `gateway-excerpt.jsonl`, restored SHA256 match |
 | Uppcoder deployment | BLOCKED | no portal credentials, CLI, or stored token on this machine |
 | Computer-use exploration (Step 6) | BLOCKED | `node_repl`/Computer Use runtime unavailable; file REA used instead |
 | GitHub Release v1.0.0 | PASS | public release page and installer verified, HTTP 200 |

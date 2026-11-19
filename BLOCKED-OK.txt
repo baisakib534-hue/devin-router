@@ -1,0 +1,17 @@
+BLOCKED-OK
+Timestamp: 2026-11-19T08:34:10.2126543+03:00
+Hosts: C:\WINDOWS\System32\drivers\etc\hosts
+Backup: C:\Users\sakim\OneDrive\Desktop\devin\repo\hosts-backup.txt
+Original SHA256: 2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085
+Domains:
+server.codeium.com
+server-beta.codeium.com
+server-staging.codeium.com
+eu.windsurf.com
+windsurf.fedstart.com
+app.devin.ai
+app.beta.devin.ai
+register.windsurf.com
+marketplace.windsurf.com
+windsurf-stable.codeium.com
+codeium.com

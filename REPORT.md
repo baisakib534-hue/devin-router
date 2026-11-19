@@ -110,11 +110,17 @@ Installed-target isolation (after BUG-003):
 
 ## 9. Parity / offline sweep
 
-Honest status: **source parity and offline E2E completed; the exact hosts-file block was not.**
+**Status: PASS — source parity, user-level proxy offline E2E, and exact hosts-file offline E2E all completed.**
+
 - Source diff in `devin-mod`: only the two documented wiring files changed (`windsurf-auth/dist/extension.js`, `windsurf/dist/extension.js`).
 - Runtime parity: the gateway answers the same Connect-RPC routes Devin uses (`GetUserStatus`, `GetCliModelConfigs`, `GetCliTeamSettings`, `GetChatMessage`, analytics).
-- Offline proof: a user-level proxy block (`127.0.0.1:9`, `NO_PROXY=127.0.0.1,localhost`) kept external traffic unusable while Devin still created `test-project/offline-e2e/hello-offline.txt` through the local gateway and mock provider.
-- The exact hosts-file block was attempted but Windows UAC was denied; it remains an owner-elevation step, not a completed hosts-block proof.
+- User-level proxy proof: `127.0.0.1:9` plus `NO_PROXY=127.0.0.1,localhost` kept external traffic unusable while Devin created `test-project/offline-e2e/hello-offline.txt` through the local gateway and mock provider.
+- Exact hosts-file proof:
+  - Elevation method: self-elevating `block-hosts.ps1` and `restore-hosts.ps1`, each relaunching with `Start-Process powershell -Verb RunAs`.
+  - Domains blocked: `server.codeium.com`, `server-beta.codeium.com`, `server-staging.codeium.com`, `eu.windsurf.com`, `windsurf.fedstart.com`, `app.devin.ai`, `app.beta.devin.ai`, `register.windsurf.com`, `marketplace.windsurf.com`, `windsurf-stable.codeium.com`, `codeium.com`.
+  - Offline run: Devin + gateway + mock provider created `test-project/offline-hosts-e2e/hello-hosts.txt` containing exactly `HELLO FROM DEVIN ROUTER OFFLINE HOSTS`.
+  - Gateway evidence: `test-project/offline-hosts-e2e/gateway-excerpt.jsonl` records `GetChatMessage`, `chat-message`, and `provider-forward` to the local mock provider.
+  - Hosts restored: yes. Restored SHA256 matches `hosts-original.sha256.txt` and `hosts-backup.txt`: `2D6BDFB341BE3A6234B24742377F93AA7C7CFB0D9FD64EFA9282C87852E57085`.
 
 ## 10. Bugs
 
